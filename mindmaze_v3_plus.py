@@ -78,27 +78,37 @@ if puzzle_type == "Number Sort":
         except:
             st.error("⚠️ Invalid input.")
 
-# ========== MATH GRID (Lite) ==========
+# ========== MATH GRID (Lite - FIXED) ==========
 elif puzzle_type == "Math Grid (Lite)":
     st.subheader("🧮 Match the sum")
     numbers = random.sample(range(1, 20), 4)
     target_sum = sum(numbers) // 2 + 5
     st.write(f"🎯 Target Sum: {target_sum}")
     st.write(f"🧩 Numbers: {numbers}")
-    math_guess = st.text_input("✏️ Enter 2 numbers that sum to target:")
+    math_guess = st.text_input("✏️ Enter 2 numbers that sum to target (e.g., 5,10):")
 
     if math_guess:
         try:
             nums = list(map(int, math_guess.split(',')))
-            if sum(nums) == target_sum:
+            is_valid = (
+                len(nums) == 2 and
+                nums[0] != nums[1] and
+                all(n in numbers for n in nums) and
+                sum(nums) == target_sum
+            )
+
+            if is_valid:
                 st.success("✅ Correct!")
                 solve_time = random.randint(5, 15)
                 prediction = model.predict([[2, solve_time]])[0] if model else "Unknown"
                 log_result(user, "Math Grid (Lite)", "Custom", solve_time, prediction)
             else:
-                st.error("❌ Incorrect sum.")
+                st.error("❌ Incorrect. Make sure:")
+                st.markdown("- The **sum** matches the target")
+                st.markdown("- The **numbers are different**")
+                st.markdown("- The numbers are from the given set")
         except:
-            st.error("⚠️ Please enter two numbers separated by comma.")
+            st.error("⚠️ Please enter two valid numbers separated by comma.")
 
 # ========== MATH GRID (3x3) ==========
 elif puzzle_type == "Math Grid (3x3)":

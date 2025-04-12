@@ -32,7 +32,7 @@ def load_model():
 
 model = load_model()
 
-# Logging
+# Logging function
 def log_result(user, puzzle_type, level, solve_time, prediction):
     log = pd.DataFrame([{
         "user": user,
@@ -78,13 +78,35 @@ if puzzle_type == "Number Sort":
         except:
             st.error("⚠️ Invalid input.")
 
-# ========== MATH GRID (Lite - FIXED) ==========
+# ========== MATH GRID (Lite - FIXED + HINT) ==========
 elif puzzle_type == "Math Grid (Lite)":
     st.subheader("🧮 Match the sum")
-    numbers = random.sample(range(1, 20), 4)
-    target_sum = sum(numbers) // 2 + 5
+
+    # Step 1: Generate a valid pair and build a number set around it
+    all_possible = list(range(1, 25))
+    pair = random.sample(all_possible, 2)
+    target_sum = sum(pair)
+
+    # Add two more numbers
+    remaining = list(set(all_possible) - set(pair))
+    extra = random.sample(remaining, 2)
+    numbers = pair + extra
+    random.shuffle(numbers)
+
     st.write(f"🎯 Target Sum: {target_sum}")
     st.write(f"🧩 Numbers: {numbers}")
+
+    # 💡 Show valid pairs
+    if st.checkbox("💡 Show me a hint"):
+        valid_pairs = [(a, b) for i, a in enumerate(numbers)
+                       for j, b in enumerate(numbers)
+                       if i < j and a + b == target_sum]
+        if valid_pairs:
+            st.info(f"✅ Valid pairs that sum to {target_sum}: {valid_pairs}")
+        else:
+            st.warning("⚠️ No valid pairs found (shouldn't happen).")
+
+    # Input
     math_guess = st.text_input("✏️ Enter 2 numbers that sum to target (e.g., 5,10):")
 
     if math_guess:

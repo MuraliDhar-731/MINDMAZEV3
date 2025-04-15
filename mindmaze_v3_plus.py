@@ -179,17 +179,18 @@ elif puzzle_type == "Math Grid (Lite)":
 elif puzzle_type == "Math Grid (3x3)":
     st.subheader("🧮 Fill a 3x3 Grid to Match Target Row & Column Sums")
 
-    @st.cache_data
+    @st.cache_data(show_spinner=True)
     def get_feasible_targets_with_labels():
         valid = []
-        for t in range(15, 61):
-            for _ in range(500):
-                nums = random.sample(range(1, 25), 9)
-                grid = np.array(nums).reshape(3, 3)
-                if all(sum(row) == t for row in grid) and all(sum(col) == t for col in grid.T):
-                    label = "Easy" if t <= 30 else "Medium" if t <= 45 else "Hard"
-                    valid.append((t, label))
-                    break
+        with st.spinner("🔄 Finding valid target sums..."):
+            for t in range(15, 61):
+                for _ in range(1000):
+                    nums = random.sample(range(1, 25), 9)
+                    grid = np.array(nums).reshape(3, 3)
+                    if all(sum(row) == t for row in grid) and all(sum(col) == t for col in grid.T):
+                        label = "Easy" if t <= 30 else "Medium" if t <= 45 else "Hard"
+                        valid.append((t, label))
+                        break
         return sorted(valid)
 
     def generate_solvable_grid(target_sum):
@@ -200,30 +201,30 @@ elif puzzle_type == "Math Grid (3x3)":
                 return nums
         return None
 
-    feasible_targets = get_feasible_targets_with_labels()
-    if not feasible_targets:
-        st.error("⚠️ No valid target sums found. Please reload.")
-        st.stop()
-
-    random_triggered = st.checkbox("🎲 Generate Random Solvable Grid")
-
-    if random_triggered:
+    # ✅ First launch: initialize a puzzle
+    if "grid_initialized" not in st.session_state:
+        feasible_targets = get_feasible_targets_with_labels()
         chosen_pair = random.choice(feasible_targets)
-        target_sum = chosen_pair[0]
-        st.info(f"🎯 Random Target: **{target_sum} ({chosen_pair[1]})**")
-    else:
-        target_options = [f"{t} ({label})" for t, label in feasible_targets]
-        selected_option = st.selectbox("🎯 Choose a target sum:", target_options)
-        target_sum = int(selected_option.split()[0])
+        st.session_state["target_sum"] = chosen_pair[0]
+        st.session_state["difficulty"] = chosen_pair[1]
+        st.session_state["available_numbers"] = generate_solvable_grid(st.session_state["target_sum"])
+        st.session_state["grid_initialized"] = True
 
-    available_numbers = generate_solvable_grid(target_sum)
+    # 🎲 Generate new grid manually
+    if st.checkbox("🎲 Generate Random Solvable Grid"):
+        feasible_targets = get_feasible_targets_with_labels()
+        chosen_pair = random.choice(feasible_targets)
+        st.session_state["target_sum"] = chosen_pair[0]
+        st.session_state["difficulty"] = chosen_pair[1]
+        st.session_state["available_numbers"] = generate_solvable_grid(st.session_state["target_sum"])
 
-    if not available_numbers:
-        st.error("⚠️ Could not generate a valid grid. Try a different target sum.")
-        st.stop()
+    target_sum = st.session_state["target_sum"]
+    available_numbers = st.session_state["available_numbers"]
 
+    st.info(f"🎯 Current Target: **{target_sum} ({st.session_state['difficulty']})**")
     st.write("🧩 Use these numbers (no repeats):", available_numbers)
 
+    # Start timer on grid start
     if "grid3x3" not in st.session_state:
         st.session_state.grid3x3 = [[0]*3 for _ in range(3)]
         st.session_state.grid_start = time.time()
@@ -232,15 +233,16 @@ elif puzzle_type == "Math Grid (3x3)":
         row_hint = random.sample(available_numbers, 3)
         while sum(row_hint) != target_sum:
             row_hint = random.sample(available_numbers, 3)
-        st.info(f"🧩 Hint Row: {row_hint} (sum: {target_sum})")
+        st.info(f"🧩 Suggested row: {row_hint} (sum: {target_sum})")
 
+    # Grid input
     grid_input = []
     for row in range(3):
         cols = st.columns(3)
         row_vals = []
         for col in range(3):
             key = f"cell_{row}_{col}"
-            val = cols[col].number_input(f" ", min_value=0, max_value=99, key=key, label_visibility="collapsed")
+            val = cols[col].number_input(" ", min_value=0, max_value=99, key=key, label_visibility="collapsed")
             row_vals.append(val)
         grid_input.append(row_vals)
 
@@ -264,7 +266,9 @@ elif puzzle_type == "Math Grid (3x3)":
             if not demo_mode:
                 log_result(user, "Math Grid (3x3)", "3x3", solve_time, prediction)
         else:
-            st.warning("❌ Some values or sums are incorrect. Try again!")
+            st.warning("❌ Some sums or values are incorrect. Try again!")
+
+ 
 
 elif puzzle_type == "Word Logic":
     st.subheader("🔤 Guess the 5-letter word in 3 tries")

@@ -90,14 +90,24 @@ if puzzle_type == "Number Sort":
 elif puzzle_type == "Math Grid (Lite)":
     st.subheader("🧮 Match the sum")
 
-    all_possible = list(range(1, 25))
-    pair = random.sample(all_possible, 2)
-    target_sum = sum(pair)
+    if "math_lite_nums" not in st.session_state:
+        all_possible = list(range(1, 25))
+        pair = random.sample(all_possible, 2)
+        target_sum = sum(pair)
 
-    remaining = list(set(all_possible) - set(pair))
-    extra = random.sample(remaining, 2)
-    numbers = pair + extra
-    random.shuffle(numbers)
+        remaining = list(set(all_possible) - set(pair))
+        extra = random.sample(remaining, 2)
+        numbers = pair + extra
+        random.shuffle(numbers)
+
+        st.session_state["math_lite_pair"] = pair
+        st.session_state["math_lite_target"] = target_sum
+        st.session_state["math_lite_nums"] = numbers
+        st.session_state["start_time"] = time.time()
+
+    target_sum = st.session_state["math_lite_target"]
+    numbers = st.session_state["math_lite_nums"]
+    pair = st.session_state["math_lite_pair"]
 
     st.write(f"🎯 Target Sum: {target_sum}")
     st.write(f"🧩 Numbers: {numbers}")
@@ -110,7 +120,7 @@ elif puzzle_type == "Math Grid (Lite)":
             hint_pair = random.choice(valid_pairs)
             st.info(f"✅ Here's a valid pair: {hint_pair}")
         else:
-            st.warning("⚠️ No valid pairs found (shouldn't happen).")
+            st.warning("⚠️ No valid pairs found.")
 
     math_guess = st.text_input("✏️ Enter 2 numbers that sum to target (e.g., 5,10):")
 
@@ -129,9 +139,11 @@ elif puzzle_type == "Math Grid (Lite)":
 
             if is_valid:
                 st.success("✅ Correct!")
-                solve_time = round(time.time() - st.session_state.get("start_time", time.time()), 2)
+                solve_time = round(time.time() - st.session_state["start_time"], 2)
                 prediction = model.predict([[2, solve_time]])[0] if model else "Unknown"
                 log_result(user, "Math Grid (Lite)", "Custom", solve_time, prediction)
+                for key in ["math_lite_pair", "math_lite_target", "math_lite_nums", "start_time"]:
+                    st.session_state.pop(key, None)
             else:
                 st.error("❌ Incorrect. Make sure:")
                 st.markdown("- The **sum** matches the target")
@@ -139,6 +151,11 @@ elif puzzle_type == "Math Grid (Lite)":
                 st.markdown("- The numbers are from the given set")
         except:
             st.error("⚠️ Please enter two valid numbers separated by comma.")
+
+    if st.button("🔄 New Puzzle"):
+        for key in ["math_lite_pair", "math_lite_target", "math_lite_nums", "start_time"]:
+            st.session_state.pop(key, None)
+        st.experimental_rerun()
 
 # ========== Math Grid (3x3) ==========
 elif puzzle_type == "Math Grid (3x3)":
@@ -192,6 +209,7 @@ elif puzzle_type == "Word Logic":
         st.session_state["attempts"] = 0
 
     guess = st.text_input("📝 Your guess:")
+
     if st.checkbox("💡 Reveal one correct letter in the correct spot"):
         word = st.session_state["secret_word"]
         idx = random.randint(0, 4)

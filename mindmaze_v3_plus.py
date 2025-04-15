@@ -10,14 +10,24 @@ st.set_page_config(page_title="MindMaze V3+", layout="centered")
 st.title("🧠 MindMaze V3+ – Multi-Puzzle Challenge")
 
 # User login
-user = st.text_input("👤 Enter your name to begin:")
+user = st.text_input("🕤 Enter your name to begin:")
 if not user:
     st.stop()
 
 # Theme toggle
 theme = st.radio("🎨 Choose Theme:", ["Light", "Dark"])
 if theme == "Dark":
-    st.markdown("<style>body { background-color: #1e1e1e; color: white; }</style>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #0e1117;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 # Puzzle type selection
 puzzle_type = st.radio("🧠 Choose Puzzle Type:", ["Number Sort", "Math Grid (Lite)", "Math Grid (3x3)", "Word Logic"])
@@ -44,6 +54,21 @@ def log_result(user, puzzle_type, level, solve_time, prediction):
     }])
     log.to_csv("mindmaze_leaderboard.csv", mode='a',
                header=not os.path.exists("mindmaze_leaderboard.csv"), index=False)
+
+# Leaderboard display
+def show_leaderboard(puzzle_type):
+    if os.path.exists("mindmaze_leaderboard.csv"):
+        df = pd.read_csv("mindmaze_leaderboard.csv")
+        df = df[df["puzzle_type"] == puzzle_type]
+        top_scores = df.sort_values(by="solve_time").head(5)
+        st.markdown("\U0001F3C6 **Leaderboard:**")
+        st.dataframe(top_scores[["user", "level", "solve_time"]])
+
+# Reset functionality
+if st.button("\u27f3 Reset Puzzle"):
+    for key in ["start_time", "puzzle", "solved", "grid3x3", "grid_start", "secret_word", "attempts"]:
+        if key in st.session_state:
+            del st.session_state[key]
 
 # ========== NUMBER SORT ==========
 if puzzle_type == "Number Sort":
@@ -73,6 +98,7 @@ if puzzle_type == "Number Sort":
                     st.info(f"🔮 Predicted difficulty: {prediction}")
                     log_result(user, "Number Sort", level, solve_time, prediction)
                     st.session_state["solved"] = True
+                    show_leaderboard("Number Sort")
             else:
                 st.warning("❌ Not sorted. Try again.")
         except:
@@ -82,12 +108,9 @@ if puzzle_type == "Number Sort":
 elif puzzle_type == "Math Grid (Lite)":
     st.subheader("🧮 Match the sum")
 
-    # Step 1: Generate a valid pair and build a number set around it
     all_possible = list(range(1, 25))
     pair = random.sample(all_possible, 2)
     target_sum = sum(pair)
-
-    # Add two more numbers
     remaining = list(set(all_possible) - set(pair))
     extra = random.sample(remaining, 2)
     numbers = pair + extra
@@ -96,7 +119,6 @@ elif puzzle_type == "Math Grid (Lite)":
     st.write(f"🎯 Target Sum: {target_sum}")
     st.write(f"🧩 Numbers: {numbers}")
 
-    # 💡 Show valid pairs
     if st.checkbox("💡 Show me a hint"):
         valid_pairs = [(a, b) for i, a in enumerate(numbers)
                        for j, b in enumerate(numbers)
@@ -106,7 +128,6 @@ elif puzzle_type == "Math Grid (Lite)":
         else:
             st.warning("⚠️ No valid pairs found (shouldn't happen).")
 
-    # Input
     math_guess = st.text_input("✏️ Enter 2 numbers that sum to target (e.g., 5,10):")
 
     if math_guess:
@@ -121,9 +142,10 @@ elif puzzle_type == "Math Grid (Lite)":
 
             if is_valid:
                 st.success("✅ Correct!")
-                solve_time = random.randint(5, 15)
+                solve_time = round(time.time() - st.session_state.get("start_time", time.time()), 2)
                 prediction = model.predict([[2, solve_time]])[0] if model else "Unknown"
                 log_result(user, "Math Grid (Lite)", "Custom", solve_time, prediction)
+                show_leaderboard("Math Grid (Lite)")
             else:
                 st.error("❌ Incorrect. Make sure:")
                 st.markdown("- The **sum** matches the target")
@@ -149,7 +171,7 @@ elif puzzle_type == "Math Grid (3x3)":
         row_vals = []
         for col in range(3):
             key = f"cell_{row}_{col}"
-            val = st.number_input(f"", min_value=0, max_value=99, key=key, label_visibility="collapsed")
+            val = cols[col].number_input("", min_value=0, max_value=99, key=key, label_visibility="collapsed")
             row_vals.append(val)
         grid_input.append(row_vals)
 
@@ -159,12 +181,13 @@ elif puzzle_type == "Math Grid (3x3)":
         cols_correct = all(sum(c) == target_sum for c in grid_np.T)
         all_values = grid_np.flatten().tolist()
 
-        if rows_correct and cols_correct and sorted(all_values) == sorted(available_numbers):
+        if rows_correct and cols_correct and set(all_values) == set(available_numbers):
             solve_time = round(time.time() - st.session_state.grid_start, 2)
             st.success(f"🎉 Solved in {solve_time} seconds!")
             prediction = model.predict([[9, solve_time]])[0] if model else "Unknown"
             st.info(f"🔮 Predicted difficulty: {prediction}")
             log_result(user, "Math Grid (3x3)", "3x3", solve_time, prediction)
+            show_leaderboard("Math Grid (3x3)")
         else:
             st.error("❌ Incorrect! Check row/col sums and number usage.")
 
@@ -186,6 +209,7 @@ elif puzzle_type == "Word Logic":
             log_result(user, "Word Logic", "5-letter", solve_time, prediction)
             st.session_state["secret_word"] = random.choice(word_list)
             st.session_state["attempts"] = 0
+            show_leaderboard("Word Logic")
         elif st.session_state["attempts"] >= 3:
             st.error(f"❌ Out of tries. The word was: {st.session_state['secret_word']}")
             st.session_state["secret_word"] = random.choice(word_list)

@@ -49,6 +49,29 @@ def log_result(user, puzzle_type, level, solve_time, prediction):
     log.to_csv("mindmaze_leaderboard.csv", mode='a',
                header=not os.path.exists("mindmaze_leaderboard.csv"), index=False)
 
+
+
+# Sidebar Preview Section
+st.sidebar.markdown("📘 **MindMaze Puzzle Demos**")
+if st.sidebar.checkbox("👀 Show Examples for All Modes"):
+    st.sidebar.markdown("### 🔢 Number Sort")
+    st.sidebar.markdown("- **Easy**: [6, 3, 12, 8] → ✅ Input: 3,6,8,12")
+    st.sidebar.markdown("- **Medium**: [14, 2, 8, 19, 7, 4] → ✅ Input: 2,4,7,8,14,19")
+    st.sidebar.markdown("- **Hard**: [5, 11, 1, 16, 8, 4, 9, 13, 2] → ✅ Input: 1,2,4,5,8,9,11,13,16")
+
+    st.sidebar.markdown("### 🧮 Math Grid (Lite)")
+    st.sidebar.markdown("- Target: **21** | Numbers: [13, 8, 4, 6] → ✅ Input: 13,8")
+
+    st.sidebar.markdown("### 🧮 Math Grid (3x3)")
+    st.sidebar.markdown("- Target Sum: **15** | Numbers: [1–9]")
+    st.sidebar.markdown("✅ Row Hint: [4,5,6]")
+
+    st.sidebar.markdown("### 🔤 Word Logic")
+    st.sidebar.markdown("- Word: `smile`\n- ❌ `table` → ✅ `smile`")
+    st.sidebar.markdown("- Hint: Position 5 = **E**")
+
+
+
 # ========== Number Sort ==========
 if puzzle_type == "Number Sort":
     st.subheader("🔢 Arrange numbers in order")

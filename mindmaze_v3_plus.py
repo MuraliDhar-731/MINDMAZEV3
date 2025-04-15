@@ -75,7 +75,6 @@ if not user:
 # Puzzle selection
 puzzle_type = st.radio("🧠 Choose Puzzle Type:", ["Number Sort", "Math Grid (Lite)", "Math Grid (3x3)", "Word Logic"])
 
-# ---------- Number Sort ----------
 if puzzle_type == "Number Sort":
     st.subheader("🔢 Arrange numbers in order")
     level = st.selectbox("🎯 Choose Difficulty", ["Easy", "Medium", "Hard"])
@@ -112,7 +111,6 @@ if puzzle_type == "Number Sort":
         except:
             st.error("⚠️ Invalid input.")
 
-# ---------- Math Grid Lite ----------
 elif puzzle_type == "Math Grid (Lite)":
     st.subheader("🧮 Match the sum")
 
@@ -175,11 +173,26 @@ elif puzzle_type == "Math Grid (Lite)":
             st.session_state.pop(k, None)
         st.experimental_rerun()
 
-# ---------- Math Grid 3x3 ----------
 elif puzzle_type == "Math Grid (3x3)":
     st.subheader("🧮 Fill a 3x3 Grid to Match Target Row & Column Sums")
-    target_sum = st.slider("🎯 Set target sum per row/column", 10, 30, 15)
-    available_numbers = random.sample(range(1, 20), 9)
+
+    def generate_solvable_grid(target_sum):
+        attempts = 0
+        while attempts < 10000:
+            nums = random.sample(range(1, 25), 9)
+            grid = np.array(nums).reshape(3, 3)
+            if all(sum(row) == target_sum for row in grid) and all(sum(col) == target_sum for col in grid.T):
+                return nums
+            attempts += 1
+        return None
+
+    target_sum = st.slider("🎯 Set target sum per row/column", 15, 60, 45)
+    available_numbers = generate_solvable_grid(target_sum)
+
+    if not available_numbers:
+        st.error("⚠️ Could not generate a valid solvable grid. Try another target sum.")
+        st.stop()
+
     st.write("🧩 Use these numbers (no repeats):", available_numbers)
 
     if "grid3x3" not in st.session_state:
@@ -187,7 +200,6 @@ elif puzzle_type == "Math Grid (3x3)":
         st.session_state.grid_start = time.time()
 
     if st.checkbox("💡 Show a filled row hint"):
-        hint_row = random.randint(0, 2)
         row_hint = random.sample(available_numbers, 3)
         while sum(row_hint) != target_sum:
             row_hint = random.sample(available_numbers, 3)
@@ -225,7 +237,6 @@ elif puzzle_type == "Math Grid (3x3)":
         else:
             st.warning("❌ Some sums or values are incorrect. Try again!")
 
-# ---------- Word Logic ----------
 elif puzzle_type == "Word Logic":
     st.subheader("🔤 Guess the 5-letter word in 3 tries")
     word_list = ["apple", "grape", "brain", "table", "smile"]

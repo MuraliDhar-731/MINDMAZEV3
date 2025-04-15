@@ -186,7 +186,21 @@ elif puzzle_type == "Math Grid (3x3)":
             attempts += 1
         return None
 
-    target_sum = st.slider("🎯 Set target sum per row/column", 15, 60, 45)
+    def get_feasible_targets():
+        """Pre-compute valid target sums that allow a solvable 3x3 grid."""
+        valid = []
+        for t in range(15, 61):
+            for attempt in range(300):  # Keep attempts low for speed
+                nums = random.sample(range(1, 25), 9)
+                grid = np.array(nums).reshape(3, 3)
+                if all(sum(row) == t for row in grid) and all(sum(col) == t for col in grid.T):
+                    valid.append(t)
+                    break
+        return sorted(valid)
+
+    feasible_targets = get_feasible_targets()
+    target_sum = st.selectbox("🎯 Choose a valid target sum:", feasible_targets)
+
     available_numbers = generate_solvable_grid(target_sum)
 
     if not available_numbers:
@@ -236,6 +250,7 @@ elif puzzle_type == "Math Grid (3x3)":
                 log_result(user, "Math Grid (3x3)", "3x3", solve_time, prediction)
         else:
             st.warning("❌ Some sums or values are incorrect. Try again!")
+
 
 elif puzzle_type == "Word Logic":
     st.subheader("🔤 Guess the 5-letter word in 3 tries")

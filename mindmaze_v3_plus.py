@@ -44,7 +44,7 @@ def load_model():
 
 model = load_model()
 
-# Log function
+# Logging
 def log_result(user, puzzle_type, level, solve_time, prediction):
     log = pd.DataFrame([{
         "user": user,
@@ -57,7 +57,7 @@ def log_result(user, puzzle_type, level, solve_time, prediction):
     log.to_csv("mindmaze_leaderboard.csv", mode='a',
                header=not os.path.exists("mindmaze_leaderboard.csv"), index=False)
 
-# Performance stars
+# Performance badge
 def performance_feedback(solve_time):
     if solve_time <= 7:
         st.balloons()
@@ -74,6 +74,7 @@ if not user:
 
 # Puzzle selection
 puzzle_type = st.radio("🧠 Choose Puzzle Type:", ["Number Sort", "Math Grid (Lite)", "Math Grid (3x3)", "Word Logic"])
+
 
 if puzzle_type == "Number Sort":
     st.subheader("🔢 Arrange numbers in order")
@@ -95,7 +96,7 @@ if puzzle_type == "Number Sort":
     user_input = st.text_input("✏️ Type numbers in order, e.g., 1,2,3:")
     if user_input:
         try:
-            guess = list(map(lambda x: int(x.strip()), user_input.split(',')))
+            guess = list(map(int, user_input.split(',')))
             if guess == sorted(st.session_state["puzzle"]):
                 if not st.session_state["solved"]:
                     solve_time = round(time.time() - st.session_state["start_time"], 2)
@@ -110,6 +111,7 @@ if puzzle_type == "Number Sort":
                 st.warning("❌ Not sorted. Try again.")
         except:
             st.error("⚠️ Invalid input.")
+
 
 elif puzzle_type == "Math Grid (Lite)":
     st.subheader("🧮 Match the sum")
@@ -146,7 +148,7 @@ elif puzzle_type == "Math Grid (Lite)":
     guess = st.text_input("✏️ Enter 2 numbers that sum to target (e.g., 5,10):")
     if guess:
         try:
-            nums = list(map(lambda x: int(x.strip()), guess.split(',')))
+            nums = list(map(int, guess.split(',')))
             nums = sorted(nums)
             is_valid = (
                 len(nums) == 2 and nums[0] != nums[1] and
@@ -171,40 +173,53 @@ elif puzzle_type == "Math Grid (Lite)":
     if st.button("🔄 New Puzzle"):
         for k in ["math_lite_pair", "math_lite_target", "math_lite_nums"]:
             st.session_state.pop(k, None)
-        st.experimental_rerun()
+        st.experimental_rer_
+
 
 elif puzzle_type == "Math Grid (3x3)":
     st.subheader("🧮 Fill a 3x3 Grid to Match Target Row & Column Sums")
 
+    @st.cache_data
+    def get_feasible_targets_with_labels():
+        valid = []
+        for t in range(15, 61):
+            for _ in range(500):
+                nums = random.sample(range(1, 25), 9)
+                grid = np.array(nums).reshape(3, 3)
+                if all(sum(row) == t for row in grid) and all(sum(col) == t for col in grid.T):
+                    label = "Easy" if t <= 30 else "Medium" if t <= 45 else "Hard"
+                    valid.append((t, label))
+                    break
+        return sorted(valid)
+
     def generate_solvable_grid(target_sum):
-        attempts = 0
-        while attempts < 10000:
+        for _ in range(5000):
             nums = random.sample(range(1, 25), 9)
             grid = np.array(nums).reshape(3, 3)
             if all(sum(row) == target_sum for row in grid) and all(sum(col) == target_sum for col in grid.T):
                 return nums
-            attempts += 1
         return None
 
-    def get_feasible_targets():
-        """Pre-compute valid target sums that allow a solvable 3x3 grid."""
-        valid = []
-        for t in range(15, 61):
-            for attempt in range(300):  # Keep attempts low for speed
-                nums = random.sample(range(1, 25), 9)
-                grid = np.array(nums).reshape(3, 3)
-                if all(sum(row) == t for row in grid) and all(sum(col) == t for col in grid.T):
-                    valid.append(t)
-                    break
-        return sorted(valid)
+    feasible_targets = get_feasible_targets_with_labels()
+    if not feasible_targets:
+        st.error("⚠️ No valid target sums found. Please reload.")
+        st.stop()
 
-    feasible_targets = get_feasible_targets()
-    target_sum = st.selectbox("🎯 Choose a valid target sum:", feasible_targets)
+    random_triggered = st.checkbox("🎲 Generate Random Solvable Grid")
+
+    if random_triggered:
+        chosen_pair = random.choice(feasible_targets)
+        target_sum = chosen_pair[0]
+        st.info(f"🎯 Random Target: **{target_sum} ({chosen_pair[1]})**")
+    else:
+        target_options = [f"{t} ({label})" for t, label in feasible_targets]
+        selected_option = st.selectbox("🎯 Choose a target sum:", target_options)
+        target_sum = int(selected_option.split()[0])
 
     available_numbers = generate_solvable_grid(target_sum)
 
     if not available_numbers:
-        st.error("⚠️ Could not generate a valid solvable grid. Try another target sum.")
+        st.error("⚠️ Could not generate a valid grid. Try a different target sum.")
         st.stop()
 
     st.write("🧩 Use these numbers (no repeats):", available_numbers)
@@ -217,7 +232,7 @@ elif puzzle_type == "Math Grid (3x3)":
         row_hint = random.sample(available_numbers, 3)
         while sum(row_hint) != target_sum:
             row_hint = random.sample(available_numbers, 3)
-        st.info(f"🧩 Suggested row: {row_hint} (sum: {target_sum})")
+        st.info(f"🧩 Hint Row: {row_hint} (sum: {target_sum})")
 
     grid_input = []
     for row in range(3):
@@ -249,13 +264,13 @@ elif puzzle_type == "Math Grid (3x3)":
             if not demo_mode:
                 log_result(user, "Math Grid (3x3)", "3x3", solve_time, prediction)
         else:
-            st.warning("❌ Some sums or values are incorrect. Try again!")
-
+            st.warning("❌ Some values or sums are incorrect. Try again!")
 
 elif puzzle_type == "Word Logic":
     st.subheader("🔤 Guess the 5-letter word in 3 tries")
     word_list = ["apple", "grape", "brain", "table", "smile"]
 
+    # Initialize session state
     if "secret_word" not in st.session_state:
         st.session_state["secret_word"] = random.choice(word_list)
         st.session_state["attempts"] = 0
@@ -273,11 +288,11 @@ elif puzzle_type == "Word Logic":
         feedback = []
         for i in range(len(guess)):
             if guess[i] == secret[i]:
-                feedback.append("🟩")
+                feedback.append("🟩")  # Correct letter and position
             elif guess[i] in secret:
-                feedback.append("🟨")
+                feedback.append("🟨")  # Correct letter, wrong position
             else:
-                feedback.append("⬜")
+                feedback.append("⬜")  # Not in word
         st.session_state["guess_history"].append((guess, " ".join(feedback)))
 
         if guess == secret:
@@ -288,17 +303,22 @@ elif puzzle_type == "Word Logic":
             st.info(f"🔮 Predicted difficulty: {prediction}")
             if not demo_mode:
                 log_result(user, "Word Logic", "5-letter", solve_time, prediction)
+
+            # Feedback stars
             if st.session_state["attempts"] == 1:
                 st.success("🌟 Genius! Guessed in 1 try!")
             elif st.session_state["attempts"] == 2:
                 st.info("⭐ Smart guesser!")
             else:
-                st.warning("🔁 Took a few tries, but good work!")
+                st.warning("🔁 Took a few tries, but you made it!")
+
+            # Reset game
             st.session_state["secret_word"] = random.choice(word_list)
             st.session_state["attempts"] = 0
             st.session_state["guess_history"] = []
+
         elif st.session_state["attempts"] >= 3:
-            st.error(f"❌ Out of tries. The word was: {secret}")
+            st.error(f"❌ Out of tries. The word was: **{secret.upper()}**")
             st.session_state["secret_word"] = random.choice(word_list)
             st.session_state["attempts"] = 0
             st.session_state["guess_history"] = []

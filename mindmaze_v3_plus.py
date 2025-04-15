@@ -201,19 +201,28 @@ elif puzzle_type == "Math Grid (3x3)":
                 return nums
         return None
 
-    # ✅ First launch: initialize a puzzle
+    feasible_targets = get_feasible_targets_with_labels()
+
+    # 🧠 First-time load: auto-init grid
     if "grid_initialized" not in st.session_state:
-        feasible_targets = get_feasible_targets_with_labels()
-        chosen_pair = random.choice(feasible_targets)
+        if feasible_targets:
+            chosen_pair = random.choice(feasible_targets)
+        else:
+            chosen_pair = (45, "Medium")  # Fallback
+            st.warning("⚠️ Using default target sum: 45 (Medium)")
         st.session_state["target_sum"] = chosen_pair[0]
         st.session_state["difficulty"] = chosen_pair[1]
         st.session_state["available_numbers"] = generate_solvable_grid(st.session_state["target_sum"])
         st.session_state["grid_initialized"] = True
 
-    # 🎲 Generate new grid manually
+    # 🎲 Manual reset
     if st.checkbox("🎲 Generate Random Solvable Grid"):
         feasible_targets = get_feasible_targets_with_labels()
-        chosen_pair = random.choice(feasible_targets)
+        if feasible_targets:
+            chosen_pair = random.choice(feasible_targets)
+        else:
+            chosen_pair = (45, "Medium")
+            st.warning("⚠️ Default target used: 45 (Medium)")
         st.session_state["target_sum"] = chosen_pair[0]
         st.session_state["difficulty"] = chosen_pair[1]
         st.session_state["available_numbers"] = generate_solvable_grid(st.session_state["target_sum"])
@@ -221,10 +230,13 @@ elif puzzle_type == "Math Grid (3x3)":
     target_sum = st.session_state["target_sum"]
     available_numbers = st.session_state["available_numbers"]
 
-    st.info(f"🎯 Current Target: **{target_sum} ({st.session_state['difficulty']})**")
+    if not available_numbers:
+        st.error("🚫 Could not generate a valid 3x3 grid. Try again.")
+        st.stop()
+
+    st.info(f"🎯 Target Sum: **{target_sum} ({st.session_state['difficulty']})**")
     st.write("🧩 Use these numbers (no repeats):", available_numbers)
 
-    # Start timer on grid start
     if "grid3x3" not in st.session_state:
         st.session_state.grid3x3 = [[0]*3 for _ in range(3)]
         st.session_state.grid_start = time.time()
@@ -233,9 +245,8 @@ elif puzzle_type == "Math Grid (3x3)":
         row_hint = random.sample(available_numbers, 3)
         while sum(row_hint) != target_sum:
             row_hint = random.sample(available_numbers, 3)
-        st.info(f"🧩 Suggested row: {row_hint} (sum: {target_sum})")
+        st.info(f"🧩 Hint Row: {row_hint} (sum: {target_sum})")
 
-    # Grid input
     grid_input = []
     for row in range(3):
         cols = st.columns(3)
@@ -266,9 +277,10 @@ elif puzzle_type == "Math Grid (3x3)":
             if not demo_mode:
                 log_result(user, "Math Grid (3x3)", "3x3", solve_time, prediction)
         else:
-            st.warning("❌ Some sums or values are incorrect. Try again!")
+            st.warning("❌ Some values or sums are incorrect. Try again!")
 
- 
+
+
 
 elif puzzle_type == "Word Logic":
     st.subheader("🔤 Guess the 5-letter word in 3 tries")
